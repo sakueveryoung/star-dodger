@@ -1,0 +1,16 @@
+{
+  "name": "star-dodger",
+  "private": true,
+  "version": "1.0.0",
+  "description": "《星际躲避者 (Star Dodger)》- 2D科幻霓虹风生存HTML5游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/core.test.js"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  }
+}

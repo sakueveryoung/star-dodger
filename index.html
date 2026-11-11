@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="《星际躲避者 (Star Dodger)》- 2D 科幻霓虹风深空生存 HTML5 独立游戏" />
+    <meta name="theme-color" content="#080d21" />
+    <title>星际躲避者 | STAR DODGER</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23080d21'/%3E%3Cpolygon points='32,6 54,52 32,42 10,52' fill='%2321e6ff' stroke='%23895cff' stroke-width='3'/%3E%3Cpolygon points='32,18 40,40 32,35 24,40' fill='%23ff3ba7'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./src/styles/main.css" />
+  </head>
+  <body>
+    <!-- 游戏主容器 -->
+    <div id="game-app" class="game-container">
+      <!-- 2D 动态星空与战斗渲染画布 -->
+      <canvas id="game-canvas"></canvas>
+
+      <!-- CRT 扫描线与暗角环境滤镜层 -->
+      <div class="crt-overlay" aria-hidden="true"></div>
+
+      <!-- 独立游戏级完整 UI 挂载层 -->
+      <div id="ui-layer" class="ui-layer">
+        <!-- ==================== 第四部分：完善游戏顶部 HUD ==================== -->
+        <header id="hud-topbar" class="hud-topbar hidden" aria-label="作战遥测 HUD">
+          <!-- 左上角：剩余生命值图标、生命值能量条、当前难度等级、陨石速度倍率 -->
+          <div class="hud-panel hud-panel-left">
+            <div class="hud-group hud-group-health">
+              <div class="hud-label-row">
+                <span class="hud-label">SHIELD INTEGRITY</span>
+                <span id="hud-health-text" class="hud-subvalue">3 / 3</span>
+              </div>
+              <div id="hud-health-bars" class="hud-health-bars" aria-label="剩余生命值">
+                <span class="health-cell active" data-index="0"></span>
+                <span class="health-cell active" data-index="1"></span>
+                <span class="health-cell active" data-index="2"></span>
+              </div>
+              <div class="hud-health-progress-track" aria-hidden="true">
+                <div id="hud-health-progress-fill" class="hud-health-progress-fill" style="width: 100%"></div>
+              </div>
+            </div>
+
+            <div class="hud-divider"></div>
+
+            <div class="hud-group">
+              <span class="hud-label">THREAT LEVEL</span>
+              <div class="hud-difficulty-wrap">
+                <span id="hud-difficulty" class="hud-value hud-value-purple">LV.1</span>
+                <span id="hud-speed-multiplier" class="hud-speed-badge">1.00x</span>
+              </div>
+              <span id="hud-spawn-rate" class="hud-subvalue">INTERVAL 1.40s · SPEED 1.00x</span>
+            </div>
+          </div>
+
+          <!-- 顶部中央：STAR DODGER 与当前游戏状态 -->
+          <div class="hud-center-badge">
+            <div class="hud-center-top">
+              <span class="badge-tag">STAR INTERCEPTOR TELEMETRY</span>
+              <span id="hud-game-state" class="hud-state-pill">PLAYING</span>
+            </div>
+            <h1 class="game-title">STAR DODGER</h1>
+            <p id="engine-telemetry" class="engine-telemetry">STATE: MENU | FPS: 60</p>
+          </div>
+
+          <!-- 右上角：生存时间、当前分数、历史最高分 -->
+          <div class="hud-panel hud-panel-right">
+            <div class="hud-group hud-group-right">
+              <span class="hud-label">SURVIVAL TIME</span>
+              <span id="hud-survival-time" class="hud-value hud-value-cyan">00:00.0</span>
+            </div>
+            <div class="hud-divider"></div>
+            <div class="hud-group hud-group-right">
+              <span class="hud-label">CURRENT SCORE</span>
+              <span id="hud-score" class="hud-value hud-value-score">0</span>
+            </div>
+            <div class="hud-divider"></div>
+            <div class="hud-group hud-group-right">
+              <span class="hud-label">BEST SCORE</span>
+              <span id="hud-high-score" class="hud-value hud-value-pink">0</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- 难度升级动态横幅提示 (LEVEL UP) -->
+        <div id="hud-levelup-banner" class="hud-levelup-banner hidden" role="status" aria-live="polite">
+          <span class="levelup-tag">WARNING // COSMIC THREAT ESCALATION</span>
+          <strong id="hud-levelup-title" class="levelup-title">LEVEL UP · LV.2</strong>
+          <span id="hud-levelup-desc" class="levelup-desc">新陨石生成间隔 1.30s · 陨石速度倍率 1.12x</span>
+        </div>
+
+        <!-- ==================== 第一部分：正式主菜单 (MENU) ==================== -->
+        <section id="screen-main-menu" class="ui-screen menu-screen ui-panel-visible" aria-label="游戏主菜单">
+          <!-- 顶部：英文 LOGO、中文名称、英文副标题 -->
+          <div class="menu-header">
+            <span class="menu-sector-tag">DEEP SPACE SURVIVAL PROJECT // SECTOR-09</span>
+            <h1 class="menu-logo-en">STAR DODGER</h1>
+            <div class="menu-title-row">
+              <span class="menu-title-line"></span>
+              <h2 class="menu-logo-zh">星际躲避者</h2>
+              <span class="menu-title-line"></span>
+            </div>
+            <p class="menu-subtitle-en">SURVIVE THE COSMIC STORM</p>
+          </div>
+
+          <!-- 中部主体：左侧导航按钮 + 右侧大型动态飞船展示 -->
+          <div class="menu-body">
+            <!-- 左侧：主菜单操作按钮列 -->
+            <nav class="menu-nav" aria-label="主菜单导航">
+              <button id="btn-menu-start" type="button" class="sci-btn sci-btn-primary sci-btn-large">
+                <span class="btn-main-text">START GAME</span>
+                <span class="btn-sub-text">开始星际航行</span>
+              </button>
+              <button id="btn-menu-howto" type="button" class="sci-btn sci-btn-secondary">
+                <span class="btn-main-text">HOW TO PLAY</span>
+                <span class="btn-sub-text">游戏说明与法则</span>
+              </button>
+              <button id="btn-menu-settings" type="button" class="sci-btn sci-btn-secondary">
+                <span class="btn-main-text">SETTINGS</span>
+                <span class="btn-sub-text">系统音频与显示</span>
+              </button>
+            </nav>
+
+            <!-- 右侧：大型宇宙飞船动态机库展示 -->
+            <div class="menu-showcase-card">
+              <div class="showcase-header">
+                <span class="showcase-code">UNIT // AEGIS-NEON MK.IV</span>
+                <span class="showcase-status">CORE ONLINE</span>
+              </div>
+              <div class="showcase-canvas-wrap">
+                <canvas id="menu-ship-canvas" width="400" height="320"></canvas>
+              </div>
+              <div class="showcase-footer">
+                <div class="showcase-metric">
+                  <span class="metric-label">THRUSTER</span>
+                  <span class="metric-val">TWIN PLASMA</span>
+                </div>
+                <div class="showcase-metric">
+                  <span class="metric-label">SHIELD CELL</span>
+                  <span class="metric-val">3 UNIT MAX</span>
+                </div>
+                <div class="showcase-metric">
+                  <span class="metric-label">REACTOR</span>
+                  <span class="metric-val metric-val-pink">HYPER-PULSE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部：历史最高分、操作提示、版本信息 -->
+          <footer class="menu-footer">
+            <div class="menu-footer-item">
+              <span class="footer-label">BEST SCORE</span>
+              <strong id="menu-best-score" class="footer-value footer-value-pink">0</strong>
+            </div>
+            <div class="menu-footer-divider"></div>
+            <div class="menu-footer-item">
+              <span class="footer-label">CONTROLS</span>
+              <strong class="footer-value footer-value-cyan">WASD / ARROW KEYS</strong>
+            </div>
+            <div class="menu-footer-divider"></div>
+            <div class="menu-footer-item">
+              <span class="footer-label">BUILD</span>
+              <strong class="footer-value">VERSION 1.0</strong>
+            </div>
+          </footer>
+        </section>
+
+        <!-- ==================== 第二部分：游戏操作说明界面 (HOW TO PLAY) ==================== -->
+        <section id="modal-howtoplay" class="ui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+          <div class="sci-modal howto-modal">
+            <div class="modal-header">
+              <span class="modal-tag">TACTICAL BRIEFING // PILOT MANUAL</span>
+              <h2 id="howto-title" class="modal-title">HOW TO PLAY</h2>
+              <p class="modal-subtitle">星际战机操控指令与深空生存法则</p>
+            </div>
+
+            <div class="howto-grid">
+              <!-- 操作说明 -->
+              <div class="howto-box">
+                <h3 class="howto-section-title">FLIGHT CONTROLS · 操作说明</h3>
+                <ul class="control-list">
+                  <li class="control-item">
+                    <span class="key-group"><kbd>W</kbd> / <kbd>↑</kbd></span>
+                    <span class="control-desc">向上移动</span>
+                  </li>
+                  <li class="control-item">
+                    <span class="key-group"><kbd>S</kbd> / <kbd>↓</kbd></span>
+                    <span class="control-desc">向下移动</span>
+                  </li>
+                  <li class="control-item">
+                    <span class="key-group"><kbd>A</kbd> / <kbd>←</kbd></span>
+                    <span class="control-desc">向左移动</span>
+                  </li>
+                  <li class="control-item">
+                    <span class="key-group"><kbd>D</kbd> / <kbd>→</kbd></span>
+                    <span class="control-desc">向右移动</span>
+                  </li>
+                  <li class="control-item">
+                    <span class="key-group"><kbd>P</kbd> / <kbd>ESC</kbd></span>
+                    <span class="control-desc">暂停游戏</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- 游戏规则 -->
+              <div class="howto-box">
+                <h3 class="howto-section-title">MISSION RULES · 游戏规则</h3>
+                <ol class="rules-list">
+                  <li>躲避不断出现的陨石。</li>
+                  <li>收集能量晶体获得积分。</li>
+                  <li>每生存 <strong>1 秒</strong> 获得 <strong>1 分</strong>。</li>
+                  <li>每收集一颗晶体获得 <strong>10 分</strong>。</li>
+                  <li>玩家拥有 <strong>3 格生命值</strong>。</li>
+                  <li>每 <strong>20 秒</strong> 游戏难度提升一级。</li>
+                  <li>被陨石击中后获得短暂无敌保护（1.2秒）。</li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="modal-actions">
+              <button id="btn-howto-return" type="button" class="sci-btn sci-btn-primary">
+                <span class="btn-main-text">RETURN</span>
+                <span class="btn-sub-text">返回主菜单</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 第三部分：游戏设置界面 (SETTINGS) ==================== -->
+        <section id="modal-settings" class="ui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <div class="sci-modal settings-modal">
+            <div class="modal-header">
+              <span class="modal-tag">SYSTEM CONFIGURATION // AUDIO &amp; DISPLAY</span>
+              <h2 id="settings-title" class="modal-title">SETTINGS</h2>
+              <p class="modal-subtitle">音频合成器与视口显示参数配置</p>
+            </div>
+
+            <div class="settings-list">
+              <!-- 1. SOUND 音效开关 -->
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-name">SOUND · 音效开关</span>
+                  <span class="setting-hint">开启或关闭实时电子合成音效</span>
+                </div>
+                <button id="btn-toggle-sound" type="button" class="sci-switch active" role="switch" aria-checked="true">
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                  <span id="label-sound-state" class="switch-text">ON</span>
+                </button>
+              </div>
+
+              <!-- 2. MASTER VOLUME 主音量滑块 -->
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-name">MASTER VOLUME · 主音量</span>
+                  <span class="setting-hint">调节全局音效输出增益</span>
+                </div>
+                <div class="volume-control-wrap">
+                  <input id="slider-volume" type="range" min="0" max="100" step="1" value="80" class="sci-slider" aria-label="主音量滑块" />
+                  <span id="label-volume-value" class="volume-value">80%</span>
+                </div>
+              </div>
+
+              <!-- 3. FULLSCREEN 全屏切换 -->
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-name">FULLSCREEN · 全屏模式</span>
+                  <span class="setting-hint">切换沉浸式全屏视口显示</span>
+                </div>
+                <button id="btn-toggle-fullscreen" type="button" class="sci-btn sci-btn-compact">
+                  <span id="label-fullscreen-state" class="btn-main-text">ENTER FULLSCREEN</span>
+                </button>
+              </div>
+            </div>
+
+            <p id="settings-feedback" class="settings-feedback" role="status" aria-live="polite"></p>
+
+            <div class="modal-actions modal-actions-split">
+              <button id="btn-settings-restore" type="button" class="sci-btn sci-btn-ghost">
+                <span class="btn-main-text">RESTORE DEFAULT</span>
+                <span class="btn-sub-text">恢复默认设置</span>
+              </button>
+              <button id="btn-settings-back" type="button" class="sci-btn sci-btn-primary">
+                <span class="btn-main-text">BACK</span>
+                <span class="btn-sub-text">返回上一级</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 第五部分：完整暂停菜单 (PAUSED) ==================== -->
+        <section id="hud-pause-banner" class="ui-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+          <div class="sci-modal pause-modal">
+            <div class="modal-header">
+              <span class="modal-tag">TACTICAL HOLD // SIMULATION FROZEN</span>
+              <h2 id="pause-title" class="modal-title">GAME PAUSED</h2>
+              <p class="modal-subtitle">按 <kbd>P</kbd> 或 <kbd>ESC</kbd> 键可快速恢复航行</p>
+            </div>
+
+            <div class="pause-actions-stack">
+              <button id="btn-resume" type="button" class="sci-btn sci-btn-primary">
+                <span class="btn-main-text">RESUME</span>
+                <span class="btn-sub-text">继续游戏 (P)</span>
+              </button>
+              <button id="btn-pause-restart" type="button" class="sci-btn sci-btn-secondary">
+                <span class="btn-main-text">RESTART</span>
+                <span class="btn-sub-text">重新开始 (R)</span>
+              </button>
+              <button id="btn-pause-settings" type="button" class="sci-btn sci-btn-secondary">
+                <span class="btn-main-text">SETTINGS</span>
+                <span class="btn-sub-text">游戏设置</span>
+              </button>
+              <button id="btn-pause-mainmenu" type="button" class="sci-btn sci-btn-ghost">
+                <span class="btn-main-text">MAIN MENU</span>
+                <span class="btn-sub-text">返回主菜单</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== 第六部分：正式 GAME OVER 结算界面 ==================== -->
+        <section id="hud-gameover-panel" class="ui-modal-backdrop gameover-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="gameover-title">
+          <div class="sci-modal gameover-modal">
+            <div class="modal-header">
+              <span class="modal-tag modal-tag-danger">MISSION TERMINATED</span>
+              <h2 id="gameover-title" class="modal-title gameover-title">GAME OVER</h2>
+              <!-- 纪录徽章：创造新纪录显示 NEW HIGH SCORE，否则显示 BEST SCORE -->
+              <div id="gameover-new-record" class="record-status-banner is-new-record">
+                ★ NEW HIGH SCORE ★
+              </div>
+            </div>
+
+            <!-- 醒目的大号最终得分与粉色最高分主展示区 -->
+            <div class="gameover-hero-scores">
+              <div class="hero-score-box hero-score-final">
+                <span class="hero-score-label">FINAL SCORE · 本局得分</span>
+                <strong id="gameover-final-score" class="hero-score-number">0</strong>
+              </div>
+              <div class="hero-score-divider"></div>
+              <div class="hero-score-box hero-score-best">
+                <span id="gameover-best-label" class="hero-score-label">BEST SCORE · 历史最高分</span>
+                <strong id="gameover-high-score" class="hero-score-number hero-score-pink">0</strong>
+              </div>
+            </div>
+
+            <!-- 整齐排布的详细战斗统计 -->
+            <div class="gameover-stats-grid">
+              <div class="gameover-stat-item">
+                <span class="stat-label">SURVIVAL TIME · 生存时间</span>
+                <strong id="gameover-survival-time" class="stat-value stat-value-cyan">0.0s</strong>
+              </div>
+              <div class="gameover-stat-item">
+                <span class="stat-label">DIFFICULTY LEVEL · 最高难度</span>
+                <strong id="gameover-difficulty" class="stat-value stat-value-purple">LV.1</strong>
+              </div>
+              <div class="gameover-stat-item">
+                <span class="stat-label">CRYSTALS COLLECTED · 收集晶体</span>
+                <strong id="gameover-crystals" class="stat-value stat-value-pink">0</strong>
+              </div>
+            </div>
+
+            <div class="modal-actions modal-actions-split">
+              <button id="btn-restart" type="button" class="sci-btn sci-btn-pink">
+                <span class="btn-main-text">PLAY AGAIN</span>
+                <span class="btn-sub-text">再次挑战 (R / ENTER)</span>
+              </button>
+              <button id="btn-gameover-mainmenu" type="button" class="sci-btn sci-btn-secondary">
+                <span class="btn-main-text">MAIN MENU</span>
+                <span class="btn-sub-text">返回主菜单</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 全局轻提示浮层 -->
+        <div id="ui-toast" class="ui-toast hidden" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
